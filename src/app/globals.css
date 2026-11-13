@@ -1,0 +1,1379 @@
+@import "tailwindcss";
+
+/*
+ * Command-center token set. The page is always dark. Status owns colour (signal / ok / warn / danger /
+ * dim); roles are told apart by their emblem and archetype, never by hue. Glow is a wider low-opacity
+ * duplicate stroke: no SVG filters and no backdrop-filter sit over the animated map. Every keyframe
+ * animates only transform, opacity or offset-distance, and every loop stops under reduced motion.
+ */
+:root {
+  --bg-0: oklch(0.13 0.012 250);
+  --bg-1: oklch(0.155 0.013 250);
+  --panel: oklch(0.18 0.014 250 / 0.82);
+  --panel-solid: oklch(0.185 0.014 250);
+  --edge: oklch(0.3 0.018 250);
+  --edge-strong: oklch(0.4 0.025 250);
+  --text: oklch(0.93 0.008 250);
+  --text-dim: oklch(0.68 0.014 250);
+  --text-faint: oklch(0.5 0.014 250);
+  --signal: oklch(0.8 0.12 210);
+  --ok: oklch(0.76 0.11 160);
+  --warn: oklch(0.82 0.14 80);
+  --danger: oklch(0.68 0.19 25);
+  --dim: oklch(0.44 0.02 250);
+  --grid: oklch(0.24 0.014 250 / 0.45);
+  --focus: oklch(0.86 0.1 210);
+  /* testing (blue scan) and synthesis / review (purple analysis) */
+  --scan: oklch(0.7 0.14 250);
+  --synth: oklch(0.7 0.16 300);
+  /* the atmosphere colour of the map, set per phase on [data-atmo] */
+  --atmo: oklch(0.5 0.02 250);
+}
+
+@theme inline {
+  --color-background: var(--bg-0);
+  --color-foreground: var(--text);
+  --color-card: var(--panel-solid);
+  --color-card-foreground: var(--text);
+  --color-muted: oklch(0.24 0.014 250);
+  --color-muted-foreground: var(--text-dim);
+  --color-border: var(--edge);
+  --color-accent: oklch(0.24 0.014 250);
+  --color-primary: var(--text);
+  --color-primary-foreground: var(--bg-0);
+  --color-success: var(--ok);
+  --color-warn: var(--warn);
+  --color-error: var(--danger);
+  --color-info: var(--signal);
+  --color-signal: var(--signal);
+  --color-dim: var(--dim);
+  --color-faint: var(--text-faint);
+  --color-panel: var(--panel);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg-0);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  /* each inset is 0 on a device with no notch/home-indicator (including every desktop browser); this
+     covers the header, the mobile menu and every page in landscape without touching any page's own layout */
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+* {
+  border-color: var(--edge);
+}
+
+a {
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* ---- typography ------------------------------------------------------------------------------ */
+
+/* nothing important is drawn below 11 px (tests/unit/ui-static.test.ts) */
+.label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.label-md {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- layers ---------------------------------------------------------------------------------- */
+
+/* L0: a static technical grid plus a radial vignette. Nothing in it moves. */
+.map-bg {
+  background-color: var(--bg-0);
+  background-image:
+    radial-gradient(ellipse at center, oklch(0.13 0.012 250 / 0) 35%, oklch(0.1 0.01 250 / 0.75) 100%),
+    linear-gradient(to right, var(--grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid) 1px, transparent 1px),
+    linear-gradient(to right, oklch(0.2 0.014 250 / 0.35) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(0.2 0.014 250 / 0.35) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    160px 160px,
+    160px 160px,
+    32px 32px,
+    32px 32px;
+  background-position: center;
+}
+
+/* L0b: the atmosphere under the map. A static tint in the phase colour; the scan sweep and the blocked
+   pulse are loops (transform / opacity only) and exist only while the mission is live or replayed. */
+[data-atmo="standby"] {
+  --atmo: oklch(0.5 0.02 250);
+}
+[data-atmo="build"] {
+  --atmo: var(--signal);
+}
+[data-atmo="scan"] {
+  --atmo: var(--scan);
+}
+[data-atmo="analyze"] {
+  --atmo: var(--synth);
+}
+[data-atmo="waiting"] {
+  --atmo: var(--warn);
+}
+[data-atmo="blocked"] {
+  --atmo: var(--danger);
+}
+[data-atmo="ready"],
+[data-atmo="complete"] {
+  --atmo: var(--ok);
+}
+.atmo-tint {
+  background: radial-gradient(ellipse 60% 55% at 50% 42%, color-mix(in oklch, var(--atmo) 13%, transparent), transparent 72%);
+}
+[data-atmo="standby"] .atmo-tint {
+  opacity: 0.5;
+}
+/* the atmosphere layer is the size container of the sweep, so the sweep covers the map pane, not the window */
+.atmo {
+  container-type: size;
+}
+/* a square of 1.6 × the pane's longer side, centred at (50%, 42%): it reaches every corner of the pane */
+.atmo-sweep {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: 160cqmax;
+  height: 160cqmax;
+  margin: -80cqmax 0 0 -80cqmax;
+  background: conic-gradient(from 0deg, transparent 0deg, color-mix(in oklch, var(--scan) 14%, transparent) 26deg, transparent 54deg, transparent 360deg);
+  transform-origin: center;
+}
+.atmo-alert {
+  background: radial-gradient(ellipse 70% 65% at 50% 42%, transparent 40%, color-mix(in oklch, var(--danger) 16%, transparent) 100%);
+  opacity: 0.35;
+}
+
+/* L2: glass HUD panels. A translucent fill with a hairline; no blur over the map. */
+.hud {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  color: var(--text);
+}
+.hud-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ---- state colours (status owns colour) ------------------------------------------------------ */
+
+.tone-signal {
+  color: var(--signal);
+}
+.tone-ok {
+  color: var(--ok);
+}
+.tone-warn {
+  color: var(--warn);
+}
+.tone-danger {
+  color: var(--danger);
+}
+.tone-dim {
+  color: var(--dim);
+}
+.tone-faint {
+  color: var(--text-faint);
+}
+
+/* ---- map SVG --------------------------------------------------------------------------------- */
+
+.map-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: var(--font-mono);
+}
+/* on a scrolling page the map lets vertical touch scrolling through; only ctrl + wheel zooms */
+.map-svg.touch-pan {
+  touch-action: pan-y;
+}
+.map-svg.panning {
+  cursor: grabbing;
+}
+.map-hint {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  padding: 2px 8px;
+}
+.map-svg text {
+  pointer-events: none;
+}
+
+.hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  cursor: pointer;
+}
+.hit-fill {
+  fill: transparent;
+  cursor: pointer;
+}
+
+/* an edge: a glow duplicate under a base stroke */
+.edge-glow {
+  fill: none;
+  stroke-width: 7;
+  stroke-linecap: round;
+  opacity: 0.16;
+}
+.edge-base {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+.st-completed .edge-base,
+.st-completed .edge-glow {
+  stroke: var(--ok);
+}
+.st-running .edge-base,
+.st-running .edge-glow {
+  stroke: var(--signal);
+}
+.st-running .edge-glow {
+  opacity: 0.22;
+}
+.st-running.stale .edge-base,
+.st-running.stale .edge-glow {
+  stroke: var(--warn);
+}
+.st-running.stale .edge-glow {
+  opacity: 0.12;
+}
+.st-pending .edge-base {
+  stroke: var(--dim);
+  stroke-dasharray: 2 6;
+}
+.st-pending .edge-glow {
+  opacity: 0;
+}
+.st-waiting-approval .edge-base,
+.st-waiting-approval .edge-glow {
+  stroke: var(--warn);
+}
+.st-waiting-approval .edge-base {
+  stroke-width: 2;
+}
+.st-blocked .edge-base,
+.st-blocked .edge-glow {
+  stroke: var(--danger);
+}
+.st-blocked .edge-base {
+  stroke-width: 2;
+}
+.st-failed .edge-base,
+.st-failed .edge-glow {
+  stroke: var(--danger);
+}
+.st-failed .edge-base {
+  stroke-dasharray: 18 10;
+}
+.st-skipped .edge-base {
+  stroke: var(--dim);
+  stroke-dasharray: 1 8;
+  opacity: 0.55;
+}
+.st-skipped .edge-glow {
+  opacity: 0;
+}
+.st-unknown .edge-base {
+  stroke: var(--text-faint);
+  stroke-dasharray: 4 4;
+}
+/* a delivered report while the mission is SYNTHESIZING */
+.st-completed.synth .edge-base,
+.st-completed.synth .edge-glow {
+  stroke: var(--synth);
+}
+.st-completed.synth .edge-glow {
+  opacity: 0.22;
+}
+.st-unknown .edge-glow {
+  opacity: 0;
+}
+.dormant .edge-base {
+  opacity: 0.45;
+}
+.edge-pulse {
+  fill: none;
+  stroke: var(--warn);
+  stroke-width: 6;
+  stroke-linecap: round;
+  opacity: 0.25;
+}
+.edge-pulse.fail {
+  stroke: var(--danger);
+}
+/* the static stand-in for flow under reduced motion */
+.edge-static-flow {
+  fill: none;
+  stroke: var(--signal);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+/* running edges carry three particles following the edge path (offset-path is set inline) */
+.particle {
+  fill: var(--signal);
+  offset-rotate: 0deg;
+  offset-distance: 0%;
+}
+.particle-halo {
+  fill: var(--signal);
+  opacity: 0.25;
+  offset-rotate: 0deg;
+  offset-distance: 0%;
+}
+.particle.synth,
+.particle-halo.synth {
+  fill: var(--synth);
+}
+
+/* nodes */
+.node-fill {
+  fill: oklch(0.17 0.014 250);
+  stroke: var(--edge-strong);
+  stroke-width: 1;
+}
+.node-ring {
+  fill: none;
+  stroke-width: 1.5;
+}
+.node-ring-glow {
+  fill: none;
+  stroke-width: 6;
+  opacity: 0.18;
+}
+.st-completed .node-ring,
+.st-completed .node-ring-glow {
+  stroke: var(--ok);
+}
+.st-running .node-ring,
+.st-running .node-ring-glow {
+  stroke: var(--signal);
+}
+.st-running.stale .node-ring,
+.st-running.stale .node-ring-glow {
+  stroke: var(--warn);
+}
+.st-pending .node-ring {
+  stroke: var(--dim);
+  stroke-dasharray: 2 5;
+}
+.st-pending .node-ring-glow {
+  opacity: 0;
+}
+.st-waiting-approval .node-ring,
+.st-waiting-approval .node-ring-glow {
+  stroke: var(--warn);
+}
+.st-blocked .node-ring,
+.st-blocked .node-ring-glow,
+.st-failed .node-ring,
+.st-failed .node-ring-glow {
+  stroke: var(--danger);
+}
+.st-skipped .node-ring {
+  stroke: var(--dim);
+  stroke-dasharray: 1 6;
+  opacity: 0.6;
+}
+.st-skipped .node-ring-glow {
+  opacity: 0;
+}
+.st-unknown .node-ring {
+  stroke: var(--text-faint);
+  stroke-dasharray: 4 4;
+}
+.st-unknown .node-ring-glow {
+  opacity: 0;
+}
+/* world font sizes are ≥ 16 so that at the ~0.7 world→screen scale of a 1440×900 window (a full HUD and threat
+   rail) every label is ≥ 11 px */
+.node-title {
+  fill: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-anchor: middle;
+}
+.node-sub {
+  fill: var(--text-dim);
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  text-anchor: middle;
+}
+.node-status {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-anchor: middle;
+}
+.node-activity {
+  fill: var(--text-faint);
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  text-anchor: middle;
+}
+.st-running:not(.stale) .node-activity {
+  fill: var(--text-dim);
+}
+.node-meta {
+  fill: var(--text-dim);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  text-anchor: middle;
+}
+.node-no {
+  fill: var(--text-faint);
+  font-size: 16px;
+  letter-spacing: 0.1em;
+  text-anchor: middle;
+}
+.node-badge {
+  fill: var(--warn);
+  font-size: 16px;
+  text-anchor: middle;
+}
+.emblem {
+  fill: none;
+  stroke: var(--text-dim);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.emblem-detail {
+  opacity: 0.5;
+}
+/* the emblem takes the status colour while the role holds a reservation */
+.st-running .emblem {
+  stroke: var(--signal);
+}
+.st-running.stale .emblem {
+  stroke: var(--warn);
+}
+/* the Guardian's shield aura while the security reviewer holds a reservation */
+.guardian-aura,
+.guardian-ring {
+  fill: none;
+  stroke: var(--signal);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+.guardian-aura {
+  opacity: 0.45;
+  stroke-dasharray: 3 4;
+}
+.guardian-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* the core: its colour (currentColor) is the atmosphere phase; rings and glow come up on a mission */
+.core-outer {
+  fill: none;
+  stroke: var(--edge-strong);
+  stroke-width: 1;
+  stroke-dasharray: 3 9;
+}
+.core-outer.on {
+  stroke: currentColor;
+  opacity: 0.55;
+}
+.core-mid {
+  fill: none;
+  stroke: var(--edge-strong);
+  stroke-width: 1;
+}
+.core-mid.on {
+  stroke: currentColor;
+  opacity: 0.8;
+}
+.core-inner {
+  fill: none;
+  stroke: var(--edge-strong);
+  stroke-width: 1;
+  stroke-dasharray: 2 7;
+  opacity: 0.6;
+}
+.core-inner.on {
+  stroke: currentColor;
+  opacity: 0.45;
+}
+.core-glow {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 10;
+  opacity: 0;
+}
+.core-glow.on {
+  opacity: 0.12;
+}
+.core-glow.energized {
+  opacity: 0.2;
+}
+.core-pulse {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.core-alert {
+  fill: none;
+  stroke: var(--danger);
+  stroke-width: 8;
+  opacity: 0.3;
+}
+.core-mote {
+  fill: var(--text-dim);
+  opacity: 0.6;
+  offset-rotate: 0deg;
+  offset-distance: 0%;
+}
+.core-title {
+  fill: var(--text);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-anchor: middle;
+}
+.core-sub {
+  fill: var(--text-dim);
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  text-anchor: middle;
+}
+.core-state {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-anchor: middle;
+}
+
+/* the current-step ring and the core rotation only run while the mission is live */
+.ring-current {
+  fill: none;
+  stroke: var(--signal);
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.spin {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* threat markers */
+.threat-shape {
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+.threat-active .threat-shape {
+  fill: oklch(0.2 0.03 80);
+  stroke: var(--warn);
+}
+.threat-active.sev-BLOCKER .threat-shape {
+  fill: oklch(0.2 0.04 25);
+  stroke: var(--danger);
+}
+.threat-neutralizing .threat-shape {
+  fill: oklch(0.18 0.02 210);
+  stroke: var(--signal);
+}
+.threat-resolved .threat-shape {
+  fill: oklch(0.18 0.02 160);
+  stroke: var(--ok);
+}
+.threat-dismissed .threat-shape,
+.threat-unknown .threat-shape {
+  fill: oklch(0.17 0.014 250);
+  stroke: var(--dim);
+}
+.threat-glow {
+  stroke-width: 6;
+  fill: none;
+  opacity: 0.16;
+}
+.threat-glyph {
+  fill: none;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.threat-active .threat-glyph {
+  stroke: var(--warn);
+}
+.threat-active.sev-BLOCKER .threat-glyph {
+  stroke: var(--danger);
+}
+.threat-neutralizing .threat-glyph {
+  stroke: var(--signal);
+}
+.threat-resolved .threat-glyph {
+  stroke: var(--ok);
+}
+.threat-dismissed .threat-glyph,
+.threat-unknown .threat-glyph {
+  stroke: var(--text-faint);
+}
+/* the two-line marker label: finding id over the severity word (severity is never colour alone) */
+.threat-id {
+  fill: var(--text);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+/* tight tracking keeps "BLOCKER" inside the lane's label width at 16 world px */
+.threat-sev {
+  fill: var(--text-dim);
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+.threat-active.sev-BLOCKER .threat-sev {
+  fill: var(--danger);
+}
+.threat-active .threat-sev {
+  fill: var(--warn);
+}
+.threat-more .threat-shape {
+  fill: oklch(0.17 0.014 250);
+  stroke: var(--text-dim);
+  stroke-dasharray: 2 3;
+}
+.threat-more .threat-glyph {
+  stroke: var(--text);
+}
+.rail-vertical {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+/* keyboard focus on map elements */
+.focus-ring {
+  fill: none;
+  stroke: var(--focus);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  opacity: 0;
+  pointer-events: none;
+}
+.map-item:focus {
+  outline: none;
+}
+.map-item:focus-visible .focus-ring {
+  opacity: 1;
+}
+.map-item.selected .focus-ring {
+  opacity: 0.7;
+  stroke-dasharray: none;
+  stroke: var(--text-dim);
+}
+
+/* one-shot effects */
+.fx-burst {
+  fill: none;
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.fx-flash {
+  fill: none;
+  stroke-width: 4;
+}
+
+/* ---- office view ----------------------------------------------------------------------------- */
+
+/* The isometric office (/office): dark navy floor, glass rooms with light top edges, warm desk tones used
+   sparingly, and a static city behind the back windows. Plain fills and strokes, no filters. Card text is
+   15–16 world px, so ≥ 11 px at the ~0.75 world → screen scale of a 1440×900 window. */
+.office-floor {
+  fill: oklch(0.16 0.022 258);
+}
+.office-floor-grid {
+  fill: none;
+  stroke: oklch(0.34 0.035 255 / 0.28);
+  stroke-width: 1;
+}
+.office-floor-edge {
+  fill: none;
+  stroke: oklch(0.45 0.04 250 / 0.55);
+  stroke-width: 1.2;
+}
+.office-window {
+  stroke: oklch(0.5 0.04 245 / 0.5);
+  stroke-width: 1;
+}
+.office-window-sky {
+  fill: oklch(0.13 0.03 262);
+}
+.office-window-glass {
+  fill: oklch(0.75 0.05 230 / 0.06);
+}
+.office-mullion {
+  stroke: oklch(0.42 0.035 250 / 0.75);
+  stroke-width: 1.4;
+}
+.office-top-edge {
+  fill: none;
+  stroke: oklch(0.86 0.03 240 / 0.75);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.office-building {
+  fill: oklch(0.19 0.03 262);
+}
+.office-building-far {
+  fill: oklch(0.16 0.03 262);
+}
+.office-lit {
+  fill: oklch(0.8 0.11 75);
+  opacity: 0.55;
+}
+.office-shadow {
+  fill: oklch(0.06 0.012 255 / 0.55);
+}
+.office-slab-top {
+  fill: oklch(0.27 0.035 258);
+}
+.office-slab-right {
+  fill: oklch(0.21 0.03 258);
+}
+.office-slab-left {
+  fill: oklch(0.18 0.026 258);
+}
+.office-tile {
+  fill: none;
+  stroke: oklch(0.36 0.035 258 / 0.45);
+  stroke-width: 0.8;
+}
+.office-room-tint {
+  opacity: 0.13;
+}
+.office-wall {
+  fill: oklch(0.72 0.05 230 / 0.07);
+  stroke: oklch(0.62 0.04 240 / 0.35);
+  stroke-width: 1;
+}
+.office-wall-mullion {
+  stroke: oklch(0.62 0.04 240 / 0.3);
+  stroke-width: 1;
+}
+.office-glass {
+  fill: oklch(0.75 0.05 230 / 0.09);
+  stroke: oklch(0.62 0.04 240 / 0.3);
+  stroke-width: 1;
+}
+.office-wood-top {
+  fill: oklch(0.6 0.075 65);
+}
+.office-wood-right {
+  fill: oklch(0.47 0.065 60);
+}
+.office-wood-left {
+  fill: oklch(0.4 0.058 58);
+}
+.office-metal-top {
+  fill: oklch(0.36 0.025 255);
+}
+.office-metal-right {
+  fill: oklch(0.27 0.022 255);
+}
+.office-metal-left {
+  fill: oklch(0.22 0.02 255);
+}
+.office-screen {
+  fill: oklch(0.2 0.02 255);
+  stroke: oklch(0.45 0.03 250);
+  stroke-width: 0.8;
+}
+.office-leaf {
+  fill: oklch(0.47 0.08 155);
+}
+.office-leaf-dark {
+  fill: oklch(0.36 0.07 158);
+}
+.office-led {
+  opacity: 0.8;
+}
+.office-figure-body {
+  fill: oklch(0.4 0.03 255);
+  stroke: oklch(0.58 0.03 255);
+  stroke-width: 0.8;
+}
+.office-figure-head {
+  fill: oklch(0.82 0.02 250);
+}
+.office-figure-leg {
+  fill: oklch(0.3 0.025 255);
+}
+.office-badge {
+  fill: oklch(0.15 0.016 255);
+  stroke-width: 1.3;
+}
+.office-emblem {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.office-glow {
+  opacity: 0.35;
+}
+.office-card-bg {
+  fill: oklch(0.15 0.016 255 / 0.93);
+  stroke: oklch(0.4 0.03 250 / 0.85);
+  stroke-width: 1;
+}
+.office-card-rule {
+  stroke: oklch(0.4 0.03 250 / 0.5);
+  stroke-width: 1;
+}
+.office-alert-bg {
+  fill: oklch(0.2 0.04 80 / 0.93);
+  stroke: oklch(0.82 0.14 80 / 0.7);
+  stroke-width: 1;
+}
+.office-title {
+  fill: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+.office-row {
+  fill: var(--text-dim);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+.office-num {
+  fill: var(--text);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.office-alert {
+  fill: var(--warn);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.office-tag {
+  fill: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  text-anchor: middle;
+}
+.office-tag-bg {
+  fill: oklch(0.15 0.016 255 / 0.95);
+  stroke: var(--signal);
+  stroke-width: 1;
+}
+/* a selected room or console keeps a clearly visible outline while its panel is open */
+.office-hits .map-item.selected .focus-ring {
+  opacity: 1;
+  stroke: var(--focus);
+  stroke-width: 2;
+  stroke-dasharray: none;
+}
+/* the Global Office's faint dotted floor paths from the core to every door: decor, never animated, under the
+   activity lines (which keep their solid or dashed edge strokes) */
+.office-floor-path {
+  fill: none;
+  stroke: oklch(0.62 0.04 240 / 0.38);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 0.1 7;
+}
+/* a mission token follows its corridor (offset-path inline); without the animation it rests at the door */
+.walker {
+  offset-rotate: 0deg;
+  offset-distance: 100%;
+}
+
+/* ---- motion ---------------------------------------------------------------------------------- */
+
+@keyframes flow {
+  from {
+    offset-distance: 0%;
+  }
+  to {
+    offset-distance: 100%;
+  }
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.12;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+@keyframes ring {
+  0% {
+    transform: scale(0.94);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.28);
+    opacity: 0;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes counter-spin {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+@keyframes burst {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+@keyframes flash {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.loop.particle,
+.loop.particle-halo {
+  animation: flow 1.8s linear infinite;
+}
+.loop.edge-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+.loop.ring-current {
+  animation: ring 2.2s ease-out infinite;
+}
+.loop.spin {
+  animation: spin 40s linear infinite;
+}
+/* the idle core: one turn in two minutes, and three motes on a 36 s orbit */
+.loop.spin.slow {
+  animation-duration: 120s;
+}
+.loop.core-mote {
+  animation: flow 36s linear infinite;
+}
+.loop.spin.counter {
+  animation: counter-spin 60s linear infinite;
+}
+.loop.core-pulse {
+  animation: ring 2.6s ease-out infinite;
+}
+.loop.core-alert {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.loop.edge-pulse.fail {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.loop.guardian-ring {
+  animation: ring 3s ease-out infinite;
+}
+.loop.atmo-sweep {
+  animation: spin 9s linear infinite;
+}
+.loop.atmo-alert {
+  animation: pulse 2.4s ease-in-out infinite;
+}
+.loop.blink {
+  animation: blink 1.6s ease-in-out infinite;
+}
+.fx.fx-burst {
+  animation: burst 1.1s ease-out forwards;
+}
+.fx.fx-flash {
+  animation: flash 1.2s ease-out forwards;
+}
+/* the office: a mission token walks once (its duration is set inline); a seated figure's monitor glow pulses */
+@keyframes walk {
+  from {
+    offset-distance: 0%;
+  }
+  to {
+    offset-distance: 100%;
+  }
+}
+.fx.walker {
+  animation: walk 2.4s linear forwards;
+}
+.loop.office-glow {
+  animation: pulse 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx,
+  .loop {
+    animation: none !important;
+  }
+}
+
+/* ---- HTML widgets ---------------------------------------------------------------------------- */
+
+.meter-track {
+  position: relative;
+  height: 6px;
+  background: oklch(0.22 0.014 250);
+  border: 1px solid var(--edge);
+  overflow: hidden;
+}
+.meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--signal);
+}
+.meter-fill.reserved {
+  background: var(--signal);
+  opacity: 0.45;
+}
+.meter-tick {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 1px;
+  background: var(--warn);
+}
+.pip {
+  width: 14px;
+  height: 6px;
+  border: 1px solid var(--edge-strong);
+  background: transparent;
+}
+.pip.on {
+  background: var(--signal);
+  border-color: var(--signal);
+}
+.pip.on.warn {
+  background: var(--warn);
+  border-color: var(--warn);
+}
+
+.waypoint {
+  position: relative;
+  min-width: 0;
+  flex: 1 1 0;
+  text-align: center;
+}
+.waypoint-dot {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--dim);
+  margin: 0 auto;
+  transform: rotate(45deg);
+  background: transparent;
+}
+.waypoint.completed .waypoint-dot {
+  border-color: var(--ok);
+  background: var(--ok);
+  box-shadow: 0 0 0 3px oklch(0.76 0.11 160 / 0.18);
+}
+.waypoint.current .waypoint-dot {
+  border-color: var(--signal);
+  background: var(--signal);
+  box-shadow: 0 0 0 4px oklch(0.8 0.12 210 / 0.25);
+}
+.waypoint.skipped .waypoint-dot {
+  border-style: dashed;
+  opacity: 0.5;
+}
+.waypoint-line {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  right: -50%;
+  height: 1px;
+  background: var(--dim);
+  opacity: 0.6;
+}
+.waypoint.completed .waypoint-line {
+  background: var(--ok);
+}
+/* labels wrap only between words ("PLAN GATE"); single long words use short forms on narrow windows */
+.waypoint-label {
+  letter-spacing: 0.03em;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  line-height: 1.2;
+}
+.waypoint-ring {
+  position: absolute;
+  top: -4px;
+  left: calc(50% - 9px);
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--signal);
+  border-radius: 50%;
+}
+.loop.waypoint-ring {
+  animation: ring 2.2s ease-out infinite;
+}
+
+.drawer {
+  background: oklch(0.165 0.013 250 / 0.97);
+  border-left: 1px solid var(--edge);
+}
+
+/* the Commander Gate strip: visible while a gate waits on the commander; its only control opens the read-only panel */
+.callout {
+  border: 1px solid oklch(0.82 0.14 80 / 0.55);
+  background: oklch(0.2 0.03 80 / 0.35);
+  padding: 4px 10px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--edge);
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.chip-ok {
+  border-color: oklch(0.76 0.11 160 / 0.5);
+  color: var(--ok);
+}
+.chip-signal {
+  border-color: oklch(0.8 0.12 210 / 0.5);
+  color: var(--signal);
+}
+.chip-warn {
+  border-color: oklch(0.82 0.14 80 / 0.5);
+  color: var(--warn);
+}
+.chip-danger {
+  border-color: oklch(0.68 0.19 25 / 0.5);
+  color: var(--danger);
+}
+.chip-dim {
+  color: var(--text-dim);
+}
+.chip-synth {
+  border-color: oklch(0.7 0.16 300 / 0.55);
+  color: var(--synth);
+}
+
+/* the mission HUD: mission number, the lifecycle pipeline bar and the current action */
+.hud-mission {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+.pipe {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 140px;
+  height: 10px;
+  gap: 2px;
+}
+.pipe-seg {
+  flex: 1 1 0;
+  border: 1px solid var(--edge-strong);
+  background: transparent;
+}
+.pipe-seg.completed {
+  border-color: var(--ok);
+  background: var(--ok);
+  opacity: 0.85;
+}
+.pipe-seg.current {
+  border-color: var(--signal);
+  background: var(--signal);
+}
+.pipe-seg.skipped {
+  border-style: dashed;
+  border-color: var(--dim);
+  opacity: 0.6;
+}
+.pipe-exit {
+  flex: 0 0 10px;
+  background: var(--danger);
+  border: 1px solid var(--danger);
+}
+.hud-action {
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+/* the character panel's hero emblem: a status-tinted frame */
+.hero-emblem {
+  width: 76px;
+  height: 76px;
+  border: 1px solid var(--edge-strong);
+  background: radial-gradient(circle at 50% 45%, oklch(0.22 0.02 250), oklch(0.16 0.014 250) 70%);
+}
+.hero-emblem.running {
+  box-shadow: 0 0 0 3px oklch(0.8 0.12 210 / 0.18);
+}
+
+/* the compact mission feed */
+.feed-line {
+  display: grid;
+  grid-template-columns: auto 16px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 6px;
+  padding: 3px 2px;
+  border-bottom: 1px solid oklch(0.3 0.018 250 / 0.5);
+}
+.feed-line:last-child {
+  border-bottom: 0;
+}
+.feed-line.current {
+  background: oklch(0.7 0.16 300 / 0.12);
+  outline: 1px solid oklch(0.7 0.16 300 / 0.45);
+  outline-offset: -1px;
+}
+.feed-lead {
+  display: flex;
+  justify-content: center;
+  padding-top: 1px;
+  color: var(--text-dim);
+}
+.feed-report {
+  display: flex;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* the Mission Replay controls */
+.replay-bar {
+  border-color: oklch(0.7 0.16 300 / 0.45);
+}
+.replay-scrub {
+  accent-color: var(--synth);
+}
+.replay-scrub:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.row-button {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+.row-button:hover {
+  background: oklch(0.22 0.014 250 / 0.6);
+}
+.row-button:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: -1px;
+}
+
+.btn {
+  border: 1px solid var(--edge-strong);
+  background: oklch(0.2 0.014 250 / 0.9);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.btn:hover {
+  border-color: var(--text-dim);
+}
+.btn:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 1px;
+}
+.btn[aria-pressed="true"],
+.btn.active {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) 1fr;
+  column-gap: 12px;
+  row-gap: 3px;
+}
+.field-grid dt {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding-top: 2px;
+}
+.field-grid dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--edge-strong) transparent;
+}
+
+/* touch targets: every .btn is at least 44px tall below 768px, or with a coarse pointer below 1024px
+   (Focus Mode's docked controls on a touch device wider than 768px); no font-size or animation change */
+@media (width < 48rem), (pointer: coarse) and (width < 64rem) {
+  .btn {
+    min-height: 44px;
+  }
+}

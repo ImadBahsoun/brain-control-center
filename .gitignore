@@ -1,0 +1,13 @@
+node_modules
+.next
+next-env.d.ts
+coverage
+*.tsbuildinfo
+.env*
+
+# local agent state and private notes; never commit
+.agent-grid/
+.claude/
+.DS_Store
+PROJECT.md
+TEST-BRAIN.md
